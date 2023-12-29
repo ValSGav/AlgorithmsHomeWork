@@ -2,20 +2,37 @@ package seminar4;
 
 public class HashTable<K, V> {
     private static final int INIT_BASKET_COUNT = 16;
+    private static final double LOAD_FACTOR = 0.75;
+
+    private int size = 0;
+
+    private void recalculate(){
+        Bucket[] old = buckets;
+        buckets = (Bucket[]) new Object[old.length*2];
+        for( int i = 0; i<old.length; i++){
+            Bucket bucket = old[i];
+            Bucket.Node node = bucket.head;
+            while (node != null){
+                put(node.value.key, node.value.value);
+                node = node.next;
+            }
+            old[i] = null;
+        }
+    }
 
     public HashTable(int initSize) {
-        this.baskets = (Basket[]) new Object[initSize];
+        this.buckets = (Bucket[]) new Object[initSize];
     }
 
     public HashTable() {
         this(INIT_BASKET_COUNT);
     }
 
-    private int calculateBasketIndex(K key) {
-        return key.hashCode() % baskets.length;
+    private int calculateBucketIndex(K key) {
+        return key.hashCode() % buckets.length;
     }
 
-    private Basket[] baskets;
+    private Bucket[] buckets;
 
     private class Entity {
         private K key;
@@ -27,7 +44,7 @@ public class HashTable<K, V> {
         }
     }
 
-    private class Basket {
+    private class Bucket {
         private Node head;
 
         private class Node {
@@ -87,21 +104,36 @@ public class HashTable<K, V> {
     }
 
     public V get(K key) {
-        int index = calculateBasketIndex(key);
-        Basket basket = baskets[index];
-        if (basket != null)
-            return basket.get(key);
+        int index = calculateBucketIndex(key);
+        Bucket bucket = buckets[index];
+        if (bucket != null)
+            return bucket.get(key);
         return null;
     }
 
-    public boolean put(K key, V value){
-        int index = calculateBasketIndex(key);
-        Basket basket = baskets[index];
-        if (basket == null) {
-            basket = new Basket();
-            baskets[index] = basket;
-        }
-        return basket.add(new Entity(key, value));
+    public boolean put(K key, V value) {
+        if(buckets.length * LOAD_FACTOR < size) {
+            recalculate();
+        };
 
+        int index = calculateBucketIndex(key);
+        Bucket bucket = buckets[index];
+        if (bucket == null) {
+            bucket = new Bucket();
+            buckets[index] = bucket;
+        }
+        boolean addOk = bucket.add(new Entity(key, value));
+        if (addOk)
+            size++;
+        return addOk;
+    }
+
+    public boolean remove(K key) {
+        int index = calculateBucketIndex(key);
+        Bucket bucket = buckets[index];
+        boolean removeOk =  bucket.remove(key);
+        if (removeOk)
+            size --;
+        return removeOk;
     }
 }
